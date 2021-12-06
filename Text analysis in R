@@ -1,0 +1,175 @@
+
+```{r, include=FALSE}
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(tidytext)
+
+install.packages("dplyr")
+install.packages("tidyr")
+install.packages("stringr")
+install.packages("tidytext")
+install.packages("wordcloud")
+```
+
+```{r}
+
+debatesdata <- read.csv("~/Downloads/primary_debates.csv", stringsAsFactors = FALSE)
+
+candidates <- c('Bush', 'Carson', 'Chafee', 'Christie', 'Clinton', 'Cruz', 'Fiorina', 'Gilmore', 'Graham', 'Huckabee', 'Jindal', 'Kasich', 'O\'Malley', 'Pataki', 'Paul', 'Perry', 'Rubio', 'Sanders', 'Santorum', 'Trump', 'Walker', 'Webb')
+
+debates <- debatesdata %>% filter(Speaker %in% candidates)
+
+debates %>% count(debates$Speaker)
+
+
+```
+
+How many speakers are there? 
+
+Asnwer: There are 22 speakers 
+
+How many parties are there?
+
+Answer: 3 parties
+
+```{r}
+debate_text <- debates %>% select(Party, Text)
+
+debate_words <- debate_text %>% unnest_tokens(word, Text)
+
+
+```
+
+
+```{r}
+debate_words %>% count(word, sort = TRUE) 
+
+word_count <- debate_words %>% 
+  anti_join(stop_words) %>% 
+  count(word, sort = TRUE) 
+
+```
+
+
+Question #1: What are the five most common (non-stop) words said by the candidates?
+
+Answer: People, Country, America, President, American
+
+
+```{r}
+library(ggplot2)
+install.packages("ggplot2")
+head(word_count, 20) %>% ggplot(aes(x = reorder(word, n), y = n)) + 
+  geom_bar(stat = "identity") + coord_flip()
+
+
+
+```
+
+```{r wordcloud}
+
+library(wordcloud)
+install.packages("wordcloud")
+
+
+word_count %>% with(wordcloud(word, n, max.words = 100))
+word_count %>% with(wordcloud(word, n, max.words = 100, random.order = FALSE))
+word_count %>% with(wordcloud(word, n, max.words = 100, random.order = FALSE, colors = 'darkcyan'))
+word_count %>% with(wordcloud(word, n, max.words = 100, random.order = FALSE, colors = brewer.pal(8, "Dark2")))
+
+```
+
+
+```{r Democrats vs Republicans}
+
+library(gridExtra)
+install.packages("gridExtra")
+word_count_by_party <- debate_words %>% anti_join(stop_words) %>% count(Party, word, sort = TRUE)
+demtop15 <- word_count_by_party %>% group_by(Party) %>% filter(Party ==  "Democratic")
+head(demtop15, 15) %>% ggplot(aes(x = reorder(word, n), y = n)) + 
+  geom_bar(stat = "identity") + coord_flip()
+
+reptop15 <-  word_count_by_party %>% group_by(Party) %>% filter(Party ==  "Republican")
+head(reptop15, 15) %>% ggplot(aes(x = reorder(word, n), y = n)) + 
+  geom_bar(stat = "identity") + coord_flip()
+
+
+```
+
+What words are in the top 15 for Democrats but not for Republicans? How about vice-versa?
+
+Answer: Democrats said "health" "care" "wall" "street" "secretary" "world" "senator" and more while republicans talked more about "isis" "tax" "government" "clinton "hillary" "deal" "money" to name a few
+
+
+```{r tf idf}
+debates_tf_idf_top <- word_count_by_party %>%
+  bind_tf_idf(word, Party, n) %>% 
+  arrange(desc(tf_idf)) %>% 
+  group_by(Party) %>%
+  top_n(15)
+
+
+ggplot(debates_tf_idf_top, aes(x = reorder(word, tf_idf), y = tf_idf, fill = Party)) +
+  geom_bar(alpha = 0.8, stat = "identity", show.legend = FALSE) +
+  facet_wrap(~Party, ncol = 2, scales = "free") + coord_flip() + 
+  scale_fill_manual(values = c("Democratic" = "blue", "Republican" = "red"))
+
+
+
+```
+
+Question #3: For Democrats, what are the 5 words with the highest tf-idf values? What about for Republicans?
+
+Democrats: affordable, glass, criminal, steagall, racism
+Republicans: Marco, Ben, Megyn, maria, florida
+
+```{r bigram model}
+debate_bigrams <- debate_text %>% unnest_tokens(bigram, Text, token = "ngrams", n = 2)
+debate_bigrams %>% count(bigram, sort = TRUE)
+
+
+
+
+debate_bigrams <- debate_bigrams %>%
+  separate(bigram, c("word1", "word2"), sep = " ") %>%
+  filter(!word1 %in% stop_words$word) %>% 
+  filter(!word2 %in% stop_words$word) %>% 
+  unite(bigram, word1, word2, sep = " ")
+
+
+
+bigram_count <- debate_bigrams %>% count(bigram, sort = TRUE) 
+
+head(bigram_count, 20) %>% 
+  ggplot(aes(x = reorder(bigram, n), y = n)) + 
+  geom_bar(stat = "identity") + coord_flip()
+```
+
+Question #4: What are the 5 most frequent bigrams?
+
+answer: Hillary Clinton, Wall street, american people, health care, President obama
+
+
+```{r bigrams by party}
+
+bigram_count_by_party <- debate_bigrams %>% count(Party, bigram, sort = TRUE) 
+
+bigrams_tf_idf_top <- bigram_count_by_party %>%
+  bind_tf_idf(bigram, Party, n) %>% 
+  arrange(desc(tf_idf)) %>% 
+  group_by(Party) %>%
+  top_n(15)
+
+
+ggplot(bigrams_tf_idf_top, aes(x = reorder(bigram, tf_idf), y = tf_idf, fill = Party)) +
+  geom_bar(alpha = 0.8, stat = "identity", show.legend = FALSE) +
+  facet_wrap(~Party, ncol = 2, scales = "free") + coord_flip() + 
+  scale_fill_manual(values = c("Democratic" = "blue", "Republican" = "red"))
+```
+
+Question #5: For Democrats, what are the 3 bigrams with the highest tf-idf values? How about for Republicans?
+
+answer: for democrats top 3 are senator sanders, affordable care, care act and for republicans the top 3 are eminent domain, free enterprise, trade center
+
+
