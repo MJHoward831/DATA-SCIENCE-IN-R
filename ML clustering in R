@@ -1,0 +1,66 @@
+```{r setup}
+library(dplyr)
+library(ggplot2)
+library(factoextra)
+
+colleges <- read.csv("~/Downloads/colleges-2021.csv", row.names = 1, na.strings = "NULL")
+```
+
+```{r FS via visualization: 1}
+colleges_subset <- colleges %>% select(LOCALE, ADM_RATE)
+my_clustering <- kmeans(colleges_subset, centers = 3)
+my_clustering$cluster <- as.factor(my_clustering$cluster)
+ggplot(colleges, aes(LOCALE, ADM_RATE, color = my_clustering$cluster)) + geom_point()
+
+my_clustering$tot.withinss
+```
+
+```{r FS via visualization: 2}
+colleges_subset <- colleges %>% select(PCIP11, LOCALE)
+my_clustering <- kmeans(colleges_subset, centers = 3)
+my_clustering$cluster <- as.factor(my_clustering$cluster)
+ggplot(colleges, aes(PCIP11, LOCALE, color = my_clustering$cluster)) + geom_point()
+
+my_clustering$tot.withinss
+```
+
+```{r FS via visualization: 3}
+colleges_subset <- colleges %>% select(PCIP09, PCIP11)
+my_clustering <- kmeans(colleges_subset, centers = 5)
+my_clustering$cluster <- as.factor(my_clustering$cluster)
+ggplot(colleges, aes(PCIP09, PCIP11, color = my_clustering$cluster)) + geom_point()
+
+my_clustering$tot.withinss
+```
+
+```{r FS via error minization}
+#The clsutering that is the best with this viewpoint is percentatge of degrees in communications and computer science. Since they both had the lowest error.
+```
+
+```{r MS setup}
+library(factoextra)
+
+errors <- c()
+kval <- c()
+for (i in 1:19) {
+ k <- kmeans(x = scale(colleges), centers = i)
+ errors <- append(errors, k$tot.withinss)
+}
+plot(errors)
+
+#if K increases then error decreases, but smallest error is not necessarily the best K since values get less clustered (more individual)
+```
+
+```{r MS: 1}
+colleges_subset <- colleges %>% select(PCIP09, PCIP11)
+my_clustering <- kmeans(colleges_subset, centers = 5)
+my_clustering$cluster <- as.factor(my_clustering$cluster)
+fviz_cluster(my_clustering, colleges) + ggtitle("My Clustering")
+```
+
+```{r MS: 2}
+colleges_subset <- colleges %>% select(LOCALE, ADM_RATE)
+my_clustering <- kmeans(colleges_subset, centers = 4)
+my_clustering$cluster <- as.factor(my_clustering$cluster)
+fviz_cluster(my_clustering, colleges) + ggtitle("My Clustering")
+```
