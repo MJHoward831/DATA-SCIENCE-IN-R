@@ -1,0 +1,110 @@
+---
+title: "Hate Crimes, Inequality, and Politcs: Exploratory data analysis"
+author: "Mitchell Howard and Elisseos Papandonatos"
+date: "10/17/2021"
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+
+library(dplyr)
+library(ggplot2)
+library(mosaic)
+library(manipulate)
+library(ggalt)
+
+hate_crimes <- read.csv("~/Downloads/hate_crimes.csv")
+
+```
+
+
+
+
+
+
+#### Introduction: In our Mini-Project for CS-100, Mitchel Howard and I (Elisseos Papandonatos) decided to explore the fascinating data set regarding “Hate Crimes”. We formed 3 hypotheses and attempted to prove them through various graphs, mainly using jitter plots and smooth curves. We discovered that using only the straight line of best fit often is not as accurate and does not provide as interesting of a story. Also we learned how to exclude certain states such as Washington D.C. from the data set, who’s points were often outliers causing a skewed graph, therefore leaving us with a more accurate smooth curve and better idea of the situation. Explore the code, graphs and work below to learn more about what we discovered
+
+
+
+
+
+## Hate crimes per 100,000 by state
+```{r, echo=TRUE, warning=FALSE}
+
+hate_crimes %>% select(avg_hatecrimes_per_100k_fbi, state) %>% arrange(desc(avg_hatecrimes_per_100k_fbi)) %>% head()
+
+
+```
+
+## Hypothesis: Income inequality has a strong correlation with hate crimes. 
+
+#### Statistics and Visualizations:
+```{r, echo=FALSE, warning=FALSE}
+
+
+hate_crimes %>% select(avg_hatecrimes_per_100k_fbi, state) %>% arrange(desc(avg_hatecrimes_per_100k_fbi)) %>% head()
+
+
+hate_crimes %>% select(avg_hatecrimes_per_100k_fbi, state, gini_index) %>% arrange(desc(gini_index)) %>% head()
+##
+
+ggplot(hate_crimes, aes(x =
+state, y = avg_hatecrimes_per_100k_fbi,
+color = avg_hatecrimes_per_100k_fbi)) +
+geom_jitter(size = 3,
+alpha = 0.5) + labs(x = "States", y = "Hate crime per 100k" )  + theme(axis.text.x = element_text(angle = 90, size = 7)) 
+
+
+
+ggplot(hate_crimes, aes(x = gini_index, y = avg_hatecrimes_per_100k_fbi, color = gini_index)) + geom_jitter() + geom_smooth() + labs(title = "Hate crimes and inequality (jitter)", x = "Inequality of income (gini index)", y = "Hate crimes per 100k (fbi)")
+
+
+ggplot(hate_crimes, aes(x = gini_index, y = hate_crimes_per_100k_splc, color = gini_index)) + geom_jitter() + geom_smooth() + labs(title = "Hate crimes and inequality (jitter)", x = "Inequality of income (gini index)", y = "Hate crimes per 100k (splc)")
+
+
+```
+
+
+
+####  Analysis: Based on our visualizations, Mitchell and I came to the conclusion that hate crimes and income inequality (based off of the gini index in the data set) are associated, but the correlation is not too strong. After having plotted the graph without Washington DC ( one of the states with the highest rate of hate crimes per 100k people) we were able to get a better idea of the correlation as DC’s point drove the estimates of the correlation because it exaggerated its strength. Also utilizing a smooth curve, as opposed to a linear regression, it gave a better visual representation of the association as the line curve often overstates correlations. 
+
+
+
+## Hypothesis 2: states with a high proportion of the population living in urban areas are more likely to experience high rates of hate crimes
+
+#### Statistics and Visualizations
+```{r, echo= FALSE, warning=FALSE}
+
+hate_crimes %>% select(avg_hatecrimes_per_100k_fbi, state, share_population_in_metro_areas) %>% arrange(desc(share_population_in_metro_areas)) %>% head()
+
+ggplot(hate_crimes, aes(x = hate_crimes$share_population_in_metro_areas, y = hate_crimes$avg_hatecrimes_per_100k_fbi, color = hate_crimes$share_population_in_metro_areas)) + geom_jitter() + geom_abline(intercept = -1, slope = 4) + labs(title = "Hate crimes vs metro concentration", x = "Share of population in metro areas", y = "Hate crimes per 100k")
+
+hate_crimes %>% select(avg_hatecrimes_per_100k_fbi, state, share_population_in_metro_areas, gini_index) %>% arrange(desc(gini_index)) %>% head()
+
+ggplot(hate_crimes, aes(x = hate_crimes$share_population_in_metro_areas, y = hate_crimes$gini_index)) + geom_density2d_filled() + labs(title = "Hate crimes vs metro concentration (density)", x = "Share of population in metro areas", y = "Hate crimes per 100k")
+
+```
+
+
+
+#### Analysis: Our hypothesis that states with a high proportion of residents in urban  areas are more likely to experience higher rates of hate crimes was proven to be true. Once graphing hate crimes vs share of population in metro areas, the correlation was made clear and we could see that there was a threshold effect. Once the share of population surpassed 0.8, the correlation between share of population in metro areas and hate crimes became very strong. Therefore reinforcing our statement, as urban areas with higher populations also experienced higher rates of hate crimes. 
+ 
+
+
+## Hypothesis  3:  higher proportions of a state voting for trump is not associated with higher rates of hate crimes
+
+#### Statistics and Visualizations
+```{r, echo=FALSE, warning=FALSE}
+hate_Crimes <- hate_crimes[-9,]
+ggplot(hate_Crimes, aes(x = share_voters_voted_trump, y = avg_hatecrimes_per_100k_fbi, color = median_household_income)) + geom_jitter() + geom_smooth() + labs(title = "Hate crimes and Trump voters", x = "Proportion of people voting for Trump", y = "Hate crimes per 100k (fbi)")
+
+ggplot(hate_Crimes,aes(x = hate_Crimes$share_voters_voted_trump, y = hate_Crimes$avg_hatecrimes_per_100k_fbi)) +
+  stat_summary(fun.data=mean_cl_normal) + 
+  geom_smooth() +  labs(title = "Hate Crimes vs Share of white poverty ", x = "Share of state voting for Trump", y = "Hate crimes per 100k")
+
+
+
+```
