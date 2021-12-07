@@ -1,0 +1,81 @@
+---
+title: "Homework 4 part 2"
+author: "Mitchell Howard"
+date: "12/6/2021"
+output: html_document
+---
+#MOVIE RECOMENDATION EXPLORATION
+
+*Click on three columns of your choice, and for each, report the five movies that are most similarly rated by users. Do you agree with these recommendations?**   choose your own films
+
+Column Two: When Harry Met Sally (1989). Five movies that are most similarly rated: Lion King, The (1994); Breakfast Club, The (1985); Dave (1993); Grease (1978); Mask, The (1994).
+
+Column One: Little Women. Five movies that are most similarly rated: Brothers McMullen, The (1995); First Knight (1995); Nine Months (1995); Circle of Friends (1995); Houseguest (1994).
+
+Column Three: Jaws (1975). Five movies that are most similarly rated: Untouchables, The (1987); Psycho (1960); Airplane! (1980); Splash (1984); Big (1988).
+
+The recommendations as a whole do make sense. That said it isn't perfect, sometimes recommending comedies based on superhero films, which seems unnatural to me. 
+## Recommendations for You
+
+```{r}
+usermatrix <- cosine(tmat)
+usermatrix2 <- as.data.frame(usermatrix)
+View(usermatrix2)
+```
+
+*Manually add  new row to the user-movie matrix that contains your own movie ratings.** choose your own films
+```{r}
+mat2[num.users+1, match(45720, all.movies)] <- 5.0 #Devil Wears Prada, The (2006), row 6444
+mat2[num.users+1, match(103372, all.movies)] <- 5.0 #Heat, The (2013), row 8353
+mat2[num.users+1, match(74458, all.movies)] <- 5.0 #Shutter Island (2010), row 7460
+mat2[num.users+1, match(296, all.movies)] <- 5.0 #Pulp Fiction (1994), row 267
+mat2[num.users+1, match(7361, all.movies)] <- 4.0 #Eternal Sunshine of the Spotless Mind (2004), row 5128
+mat2[num.users+1, match(1704, all.movies)] <- 4.0 #Good Will Hunting (1997), row 1353
+mat2[num.users+1, match(2571, all.movies)] <- 4.0 #Matrix, The (1999), row 2063
+mat2[num.users+1, match(65193, all.movies)] <- 3.0 #Wild Child (2008), row 7136
+mat2[num.users+1, match(72998, all.movies)] <- 2.0 #Avatar (2009), row 7413
+mat2[num.users+1, match(39, all.movies)] <- 2.0 #Clueless (1995), row 38
+```
+
+**Repeat the steps above to calculate a new similarity matrix among user.**
+
+```{r}
+tmat2 <- t(mat2)
+newusermatrix <- cosine(tmat2)
+newusermatrix2 <- as.data.frame(newusermatrix)
+View(newusermatrix2)
+```
+
+**Finally, ask the system to recommend movies for you based on the ratings of the user (or users) who is (are) most similar to you.**
+
+```{r}
+recommended <- ratings %>% filter(ratings$userId == 8)
+recommended <- recommended[rev(order(recommended$rating)),]
+MyMovies <- list()
+for (i in 1:10) {
+  print(movies[match(recommended[i,]$movieId, movies$movieId),]$title)
+}
+View(recommended)
+```
+
+
+## Final Analysis
+**1. Name three other websites or apps or services (besides Netflix, Amazon, and Spotify) that use recommendation systems and briefly describe what they use them for.**
+Twitter Uses a recommendation system to help people find the content that they will enjoy. It is particularly interesting because twitter spans so many areas from news, entertainment, sports and more, and in many cases suggests very useful things
+
+TikTok suggest videos to watch based on previous viewing history. I've found that this service is much more difficult to get right, as the content is almost purely video.
+
+Medium, the blog app, suggests articles to read and is a very helpful tool. 
+**2. If Twitter were to suggest accounts for a particular user to follow based on the accounts they already follow, which kind of filtering would that be—content or collaborative?**
+This is a content filtering scheme, and does not rely on the data of other users.  
+
+**3. List some pros and cons of content filtering and collaborative filtering. Why might a particular website/app/service choose one over the other in their recommendation system?**
+Content based filtering pros: 
+No data from other users is required to start making recommendations. Unlike collaborative filtering, content-based filtering doesn’t need data from other users to create recommendations. Once a user has searched on and browsed a few items and/or completed some purchases, a content-based filtering system can begin making relevant recommendations. This makes it ideal for businesses that don’t have an enormous pool of users to sample. It also works well for sellers that have many users but a small number of user interactions in specific categories or niches.
+
+cons: Attributes may be incorrect or inconsistent. Content-based recommendations are only as good as the subject-matter experts tagging items. Potentially millions of items may need attributes assigned, and since attributes can be subjective, many may be incorrectly tagged. A process that ensures attributes are applied consistently and accurately is paramount. Otherwise, a content-based recommender system will not function as intended.
+
+Collaborative filtering pros: Not required to understand item content: The content of the items does not necessarily tell the whole story, such as movie type/genre, and so on.
+No item cold-start problem: Even when no information on an item is available, we still can predict the item rating without waiting for a user to purchase it.
+Captures the change in user interests over time: Focusing solely on content does not provide any flexibility on the user's perspective and their preferences.
+Captures inherent subtle characteristics: This is very true for latent factor models. If most users buy two unrelated
