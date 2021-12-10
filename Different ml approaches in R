@@ -1,0 +1,279 @@
+---
+title: "HW3P2"
+author: "Mitchell Howard"
+date: "12/9/2021"
+output: html_document
+---
+
+```{r}
+library(class)
+
+library(rpart)
+
+library(klaR)
+library(caret)
+
+library(dplyr)
+
+mcdonalds <- read.csv("~/Downloads/mcdonalds.csv")
+
+str(mcdonalds)
+```
+
+
+```{r}
+summary(mcdonalds)
+
+glimpse(mcdonalds)
+
+
+read.csv("~/Downloads/weather.csv")
+
+mcdonalds <- na.omit(mcdonalds)
+
+
+
+mcdonalds_training <- read.csv("~/Downloads/mcdonalds_train.csv")
+
+mcdonalds_test <- read.csv("Downloads/mcdonalds_test.csv")
+
+
+
+library(rpart.plot)
+```
+
+```{r}
+acc <- function(x) mean(x == mcdonalds_test$Category)
+
+
+```
+
+```{r}
+my_nb <- NaiveBayes(Category ~ Serving.Size, data = mcdonalds_training)
+
+predict <- predict(my_nb, mcdonalds_test)$class
+
+acc(predict)
+
+
+```
+
+
+```{r}
+my_knn <- knn(dplyr::select(mcdonalds_training, Serving.Size), dplyr::select(mcdonalds_training, Serving.Size), mcdonalds_training$Category, k = 23)
+
+acc(my_knn)
+
+
+```
+
+
+```{r}
+my_dt <- rpart(Category ~ Serving.Size, data = mcdonalds_training, method = "class", control = rpart.control(maxdepth = 10, minsplit = 3 ))
+
+predict <- predict(my_dt, mcdonalds_test, type = "class")
+
+acc(predict)
+
+
+```
+
+
+```{r}
+my_nb <- NaiveBayes(Category ~ Serving.Size + Saturated.Fat, data = mcdonalds_training)
+
+predict <- predict(my_nb, mcdonalds_test)$class
+
+acc(predict)
+
+
+```
+
+
+```{r}
+my_knn <- knn(dplyr::select(mcdonalds_training, Serving.Size, Saturated.Fat), dplyr::select(mcdonalds_training, Serving.Size, Saturated.Fat), mcdonalds_training$Category, k = 23)
+
+acc(my_knn)
+
+
+```
+
+
+```{r}
+my_dt <- rpart(Category ~ Serving.Size + Saturated.Fat, data = mcdonalds_training, method = "class", control = rpart.control(maxdepth = 10, minsplit = 3 ))
+
+predict <- predict(my_dt, mcdonalds_test, type = "class")
+
+acc(predict)
+
+```
+
+```{r}
+my_nb <- NaiveBayes(Category ~ Serving.Size + Saturated.Fat + Sugars, data = mcdonalds_training)
+predict <- predict(my_nb, mcdonalds_test)$class
+acc(predict)
+
+
+```
+
+```{r}
+my_knn <- knn(dplyr::select(mcdonalds_training, Serving.Size, Saturated.Fat, Sugars), dplyr::select(mcdonalds_training, Serving.Size, Saturated.Fat, Sugars), mcdonalds_training$Category, k = 23)
+
+acc(my_knn)
+
+```
+
+```{r}
+my_dt <- rpart(Category ~ Serving.Size + Saturated.Fat + Sugars, data = mcdonalds_training, method = "class", control = rpart.control(maxdepth = 10, minsplit = 3 ))
+
+predict <- predict(my_dt, mcdonalds_test, type = "class")
+
+acc(predict)
+
+
+```
+
+```{r}
+my_nb <- NaiveBayes(Category ~ Serving.Size + Saturated.Fat + Sugars + Calories, data = mcdonalds_training)
+
+predict <- predict(my_nb, mcdonalds_test)$class
+
+acc(predict)
+```
+
+```{r}
+
+my_knn <- knn(dplyr::select(mcdonalds_training, Serving.Size, Saturated.Fat, Sugars, Calories), dplyr::select(mcdonalds_training, Serving.Size, Saturated.Fat, Sugars, Calories), mcdonalds_training$Category, k = 23)
+
+acc(my_knn)
+
+```
+
+```{r}
+my_dt <- rpart(Category ~ Serving.Size + Saturated.Fat + Sugars + Calories, data = mcdonalds_training, method = "class", control = rpart.control(maxdepth = 10, minsplit = 3 ))
+
+predict <- predict(my_dt, mcdonalds_test, type = "class")
+
+acc(predict)
+
+
+```
+
+
+```{r}
+my_nb <- NaiveBayes(Category ~ Serving.Size + Saturated.Fat + Sugars + Protein + Calories, data = mcdonalds_training)
+
+predict <- predict(my_nb, mcdonalds_test)$class
+
+acc(predict)
+```
+
+
+```{r}
+
+my_knn <- knn(dplyr::select(mcdonalds_training, Sodium, Serving.Size, Calories), dplyr::select(mcdonalds_training, Sodium, Serving.Size, Calories), mcdonalds_training$Category, k = 23)
+
+acc(my_knn)
+
+
+```
+
+```{r}
+
+my_dt <- rpart(Category ~ Serving.Size + Saturated.Fat + Sugars + Sodium + Cholesterol + Calories, data = mcdonalds_training, method = "class", control = rpart.control(maxdepth = 10, minsplit = 4 ))
+
+predict <- predict(my_dt, mcdonalds_test, type = "class")
+
+acc(predict)
+
+```
+
+```{r}
+
+nb_model <- train(Category ~ Serving.Size + Saturated.Fat + Sugars + Protein + Calories, data = mcdonalds_training, method = "nb", trControl = trainControl(method = "cv"))
+
+```
+
+```{r}
+
+nb_model$results
+
+```
+
+```{r}
+
+knn_model <- train(Category ~ Serving.Size + Sodium, data = mcdonalds_training, method = "knn", trControl = trainControl(method = "cv"))
+
+knn_model$results
+```
+
+
+```{r}
+dt_model <- train(Category ~ Serving.Size + Saturated.Fat + Sugars + Sodium + Cholesterol + Calories, data = mcdonalds_training, method = "rpart", trControl = trainControl(method = "cv"), control = rpart.control(maxdepth = 10, minsplit = 4))
+
+dt_model$results
+
+
+```
+
+Follow Up: 
+
+k-NN Pros:
+
+Applicable in many scenarios (can be used for both classification and regression)
+Simple
+requires zero assumptions about the data
+
+
+Cons:
+
+expensive (ie stores tons of data)
+
+you need a lot of memory to use it
+
+
+Examples of where/when to use:
+
+Financial decisions like credit ratings and or loans utilize this method.
+
+
+#Source: https://blog.usejournal.com/a-quick-introduction-to-k-nearest-neighbors-algorithm-62214cea29c7
+
+
+
+Decision Trees
+
+Pros:
+
+little prep time
+no need to normalize/change the data
+missing values do not bother this method
+
+Cons:
+
+changes in data cause issues 
+can make for complex calculations
+cannot work with regression
+
+Examples of where/when to use:
+
+
+Hiring process
+Source: https://medium.com/@dhiraj8899/top-5-advantages-and-disadvantages-of-decision-tree-algorithm-428ebd199d9a
+
+
+
+Naive Bayes
+
+Pros:
+
+Simple
+useful with small data sets
+
+Cons:
+
+strong assumption of independence
+
+Examples of where/when to use
+
+Calculating the probability that the sidewalk is wet given that it rained earlier
