@@ -1,0 +1,672 @@
+---
+title: 'Final Project: Whether Weather Affects Your Mental Health'
+author: "Elisseos Papandonatos & Mitchell Howard"
+date: "11/29/2021"
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+###### note: for our mappings of each region, after the west coast, where average temperature across the region is contrasted with mental health data values, only one of two visuals shows up in the knit document. Our mentor TA sat with us and could not figure out the issue.Our presentation has all visuals. Enjoy the show!
+
+
+
+
+# Introduction: 
+
+
+#### Over the years at Brown I have heard an abundance of talk about seasonal depression, where the cold, dark weather increases a populations propensity for poor mental health. It seems reasonable, and yet it remains unclear if and how this plays out. We are setting out to understand the relationship between temperature and extended periods of poor mental health. To this end we chose (https://chronicdata.cdc.gov/500-Cities-Places/500-Cities-Mental-health-not-good-for-14-days-amon/i2ek-k3pa) the CDC 500 cities project, which records the percent of the adult population of many thousands of areas who experience periods of extended poor mental health. We also found weather data for the same year for every county in the country. Merging the two data sets, which took a great deal of effort, we were able to work with a data set that included mental health statistics and temperature statistics for the entire country. 
+
+While we are curious about weather and mental health, we are aware that money and mental health interact in interesting ways, and would like to explore that relationship as well. 
+
+
+# Hypotheses: 
+
+
+1) Extended periods of poor mental health are closely correlated with low average temperatures
+2) Income is a better indicator of mental health than weather
+
+```{r}
+knitr::opts_chunk$set(echo = FALSE, 
+                      collapse = TRUE,
+                      comment = "#>",
+                      fig.path = "graphics/knitr-",
+                      fig.retina = 2, # Control using dpi
+                      fig.width = 6,  # generated images
+                      fig.pos = "t",  # pdf mode
+                      fig.align = "center",
+                      dpi = if (knitr::is_latex_output()) 72 else 300, 
+                      out.width = "100%",
+                      dev = "svg",
+                      dev.args = list(png = list(type = "cairo-png")),
+                      optipng = "-o1 -quiet")
+
+
+```
+
+```{r setup1, cache = F}
+knitr::opts_chunk$set(error = TRUE)
+```
+
+```{r setup,  include=FALSE, echo=FALSE}
+
+library(dplyr)
+library(ggplot2)
+library(stringr)
+library(proxy)
+
+weather <- read.csv("~/Desktop/weather.csv")
+
+wcmulti <- read.csv("~/Downloads/data set WC - Sheet1 (1).csv")  
+NEmulti <- read.csv("~/Downloads/NE dataset - Sheet1.csv")
+SEmulti <- read.csv("~/Downloads/SE dataset - Sheet1.csv")
+MWmulti <- read.csv("~/Downloads/MW dataset - Sheet1.csv")
+```
+  
+# Cleaning and Reducing Mental Health and Weather Data Set
+#### Our data cleaning steps were the most challenging and time consuming process of our project. We wanted to pick a data set with ample information on both weather and mental heatlh, but did not fully realize how much data that would entail. We ended up choosing a weather data set from 2016, which had well over 250,000 observations as it tracked weather in every single city in the country for every single week for the entire year. And our mental health data set was just as big, with mental health stastics from every city in the US. We soon realized that working with such huge data set would prove problematic and challenging so we decided to pick specific cities in the coutry and organize them into to regions such as the "Northeast", "Midwest, "West coast" and "South east". We ended up focusing on around 20 cities across different regions in the country to examine their mental health and weather.
+```{r reduction and cleaning, echo=FALSE}
+library(readxl)
+MH<-read.csv("~/Desktop/Mental Health.csv")
+NE<-read.csv("~/Desktop/REGION 1 (Northeast).csv")
+NE<-data.frame(NE)
+dim(NE)
+
+```
+```{r reduction and cleaning2, echo=FALSE}
+colnames(NE)
+colnames(MH)
+
+```
+
+```{r, echo=FALSE}
+MH<-MH[,c("Year","StateAbbr", "CityName", "GeographicLevel","Data_Value_Type","Data_Value", "Low_Confidence_Limit", "High_Confidence_Limit","PopulationCount","GeoLocation")]
+```
+#### After having realized how many observations we had in the data set our primary goal became to cut down as much as possible in order to make it manageable to work with. So in this part ,we looked at all our column names for our Mentlah Health Data and chose the ones that we wanted to keep namely some important ones such as "City Name", "Data Value" and "Population Count".
+```{r, echo=FALSE}
+head(MH)
+```
+```{r, echo=FALSE}
+table(MH$GeographicLevel)
+table(MH$Data_Value_Type)
+MH<-MH[MH$GeographicLevel=="City",]
+MH<-MH[MH$Data_Value_Type=="Age-adjusted prevalence",]
+dim(MH)
+```
+#### After exploring the data we realized key observations that allowed us to cut down even further. In the Geographic Level column, there were two values either "Census Tract" which refers to specific small areas/neighborhoods within a city or "city" which refers to the entire city. We decided to only keep the "city" values as it meant a greater total population of the city instead of specific neighborhoods. Due to the greater population the mental heatlh data would be more accurate as the sample size was bigger. We did the same with Data Value Type which had both age adjusted prevalence and crude prevalence. We cut out "crude prevalence" and kept "age adjusted prevalence" as it was just a summary measure that adjusts for differences in age distribuitions, which helped in both equalizing all the mental health data so we could compare on an even playing field and cutting down data. 
+
+```{r, echo=FALSE}
+MH<-MH[,c( "StateAbbr" , "CityName"  , "Data_Value"  ,  "High_Confidence_Limit", "Low_Confidence_Limit", "PopulationCount", "GeoLocation"    )]
+```
+```{r creating Northeast Region for data}
+NE.cities<-c("Philadelphia","Providence","Boston","Burlington","New York","Worcester")
+NE.MH<-MH[MH[,"CityName"] %in% NE.cities,]
+```
+
+
+```{r creating Southeast Region with data, echo=FALSE}
+SE.cities<-c("New Orleans","Miami","Houston","Atlanta")
+SE.MH<-MH[MH[,"CityName"] %in% SE.cities,]
+```
+
+```{r creating Mid-West Region with data, echo=FALSE}
+MW.cities<-c("Chicago","Detroit","Minneapolis","Cleveland")
+MW.MH<-MH[MH[,"CityName"] %in% MW.cities,]
+```
+
+```{r creating West Coast Region with data, echo=FALSE}
+WC.cities<-c("Los Angeles","Portland","Seattle","San Francisco", "San Diego")
+WC.MH<-MH[MH[,"CityName"] %in% WC.cities,]
+```
+
+#### This step is where we specified which cities we wanted to look at and grouped them into four different regions. Our code outligned which cities we wanted to keep in the mental health data and all the cities would then be categorized in their specific regions in a new data set which was called "Region.MH".
+```{r, echo=FALSE}
+head(weather)
+table(weather$Date.Week.of)
+```
+```{r, echo=FALSE}
+x<-strptime(weather$Date.Full,"%m/%d/%y")
+y<-strftime(x,format="%V")
+
+```
+
+```{r Week 53 was actually the first week of the dataset so need command to change it, echo=FALSE}
+y[y==53]<-0
+```
+```{r, echo=FALSE}
+weather$y<-y
+
+```
+#### Here is where we manipulated the weather data which presented us with many challenges. We wanted to change the dates in the weather data set as it gave us only dates. We wanted a common variable instead of specifc dates such as 1/3/16, 1/7/16... etc so instead we thought it would be best to turn them into weeks. We used strptime command which converts characters to time objects. And once successfully converting into weeks we realized we had 53 weeks instead of 52. Once exploring further we realized that the 53rd week actually refered to the data in the FIRST week. So we had to change the 53rd week to week 0. 
+```{r, echo=FALSE}
+NE.cities<-c("New York","Philadelphia","Providence","Boston","Worcester","Burlington")
+W.NE<-weather[weather[,"Station.City"] %in% NE.cities,]
+```
+#### Here we are using our previously defined cities from our Northeast region and created a new data table called "W.NE" which refers to "weather.northeast". This allowed us to extract certain cities weather data from the massive data set and put them into more manageable data tables with only the cities we cared about. 
+```{r splitting the data by city and taking the average temperature, echo=FALSE, include=FALSE}
+NE.mean<-lapply(split(W.NE$Data.Temperature.Avg.Temp,W.NE$Station.City),mean)
+NE.mean
+```
+#### Here we just split the data by the cities and took the mean temperature across the whole year using our newly made weeks.
+```{r turning the list into a vector so I can manipulate the data, include=FALSE}
+NE.mean<-unlist(NE.mean)
+NE.mean
+```
+#### We realized that our data was in list which would be problematic when trying to manipulate the data so instead we utilized the unlist command to turn it into a vector.
+
+```{r now exploring the minimum/max temperature across the year for every city,include=FALSE, echo=FALSE}
+NE.min<-lapply(split(W.NE$Data.Temperature.Avg.Temp,W.NE$Station.City),min)
+NE.min
+NE.min<-unlist(NE.min)
+NE.max<-lapply(split(W.NE$Data.Temperature.Avg.Temp,W.NE$Station.City),max)
+NE.max
+NE.max<-unlist(NE.max)
+NE.range<-NE.max-NE.min
+```
+
+#### In this step we created new data called Northeast.Minimum, Northeast.Maximum and Northeast.Range would was the min, max, and range of the temperate across the year for every city which gave us more varibales to be able to explore later on when we start to incorporate visualizations. 
+
+```{r include=FALSE}
+NE.temp<-data.frame(CityName=names(NE.mean),mean=NE.mean,min=NE.min,max=NE.max,range=NE.range)
+NE.temp
+```
+
+#### This is our new data frame with Northeast.Temperature which gave us the range, min, max and mean across the whole year for every city in the Northeast Region that we were concerned about.
+```{r, include=FALSE}
+Boston<-weather[weather$Station.City=="Boston",]
+Boston
+#plot(Boston$y,Boston$Data.Temperature.Avg.Temp,type="l",xlab="Weeks since 1/1/2016",ylab="Temperature (Fahrenheit)")
+```
+#### Now we are able to view specific  city's average temperature across the year such as Boston's!
+
+```{r}
+NE.reduced<-merge(x=NE.MH,y=NE.temp,by="CityName")
+NE.reduced
+```
+#### Here is the culmination of our cleaning and reducing. We created a new Dataset called Northeast.Reduced which merged our cleaned mental health data and our cleaned weather data for all the cities in the regions we want! 
+
+```{r which plot gives best fit, include=FALSE}
+plot(NE.reduced$mean,NE.reduced$Data_Value,xlab="Mean Temperature (Fahrenheit)",ylab="Age-Adjusted Mental Health Score")
+
+```
+
+```{r, include=FALSE}
+plot(NE.reduced$range,NE.reduced$Data_Value,xlab="Temperature  Range (Fahrenheit)",ylab="Age-Adjusted Mental Health Score")
+```
+```{r include=FALSE}
+plot(NE.reduced$min,NE.reduced$Data_Value,xlab="Minimum Temperature (Fahrenheit)",ylab="Age-Adjusted Mental Health Score")
+```
+#### This is where we realized that our hypothesis may not be well supported by just the temperature and mental health data value. We plotted 3 graphs and wanted to see which plot give the best fit between Min Temperature, Max Temperature and Temperature Range when graphed with our Adjusted Mental Health score and it did not prove to be very promising.
+
+```{r include=FALSE}
+SE.cities<-c("New Orleans","Miami","Houston","Atlanta")
+W.SE<-weather[weather[,"Station.City"] %in% SE.cities,]
+```
+```{r, include=FALSE}
+SE.mean<-lapply(split(W.SE$Data.Temperature.Avg.Temp,W.SE$Station.City),mean)
+SE.mean
+```
+
+```{r}
+SE.mean<-unlist(SE.mean)
+```
+
+```{r include=FALSE}
+SE.min<-lapply(split(W.SE$Data.Temperature.Avg.Temp,W.SE$Station.City),min)
+SE.min
+SE.min<-unlist(SE.min)
+SE.max<-lapply(split(W.SE$Data.Temperature.Avg.Temp,W.SE$Station.City),max)
+SE.max
+SE.max<-unlist(SE.max)
+SE.range<-SE.max-SE.min
+```
+```{r include =FALSE}
+SE.temp<-data.frame(CityName=names(SE.mean),mean=SE.mean,min=SE.min,max=SE.max,range=SE.range)
+SE.temp
+```
+```{r}
+SE.reduced<-merge(x=SE.MH,y=SE.temp,by="CityName", echo=FALSE)
+SE.reduced
+```
+
+```{r, echo=FALSE}
+MW.cities<-c("Chicago","Detroit","Minneapolis","Cleveland")
+W.MW<-weather[weather[,"Station.City"] %in% MW.cities,]
+```
+```{r include=FALSE}
+MW.mean<-lapply(split(W.MW$Data.Temperature.Avg.Temp,W.MW$Station.City),mean)
+MW.mean
+MW.mean<-unlist(MW.mean)
+```
+
+```{r, echo=FALSE, include=FALSE}
+MW.min<-lapply(split(W.MW$Data.Temperature.Avg.Temp,W.MW$Station.City),min)
+MW.min
+MW.min<-unlist(MW.min)
+MW.max<-lapply(split(W.MW$Data.Temperature.Avg.Temp,W.MW$Station.City),max)
+MW.max
+MW.max<-unlist(MW.max)
+MW.range<-MW.max-MW.min
+```
+```{r include=FALSE}
+MW.temp<-data.frame(CityName=names(MW.mean),mean=MW.mean,min=MW.min,max=MW.max,range=MW.range)
+MW.temp
+```
+```{r}
+MW.reduced<-merge(x=MW.MH,y=MW.temp,by="CityName")
+MW.reduced
+```
+
+```{r include=FALSE}
+WC.cities<-c("Los Angeles","Portland","Seattle","San Francisco", "San Diego")
+W.WC<-weather[weather[,"Station.City"] %in% WC.cities,]
+W.WC
+```
+```{r, echo=FALSE, include=FALSE}
+WC.mean<-lapply(split(W.WC$Data.Temperature.Avg.Temp,W.WC$Station.City),mean)
+WC.mean
+WC.mean<-unlist(WC.mean)
+```
+```{r include=FALSE}
+WC.min<-lapply(split(W.WC$Data.Temperature.Avg.Temp,W.WC$Station.City),min)
+WC.min
+WC.min<-unlist(WC.min)
+WC.max<-lapply(split(W.WC$Data.Temperature.Avg.Temp,W.WC$Station.City),max)
+WC.max
+WC.max<-unlist(WC.max)
+WC.range<-WC.max-WC.min
+```
+```{r include=FALSE}
+WC.temp<-data.frame(CityName=names(WC.mean),mean=WC.mean,min=WC.min,max=WC.max,range=WC.range)
+WC.temp
+```
+```{r}
+WC.reduced<-merge(x=WC.MH,y=WC.temp,by="CityName")
+WC.reduced
+```
+
+#### This part above was us recreating all the steps for every other region.
+
+
+
+
+# Visualizations
+```{r visuals}
+
+library(cartogram)
+library(mapsf)
+library(maptools)
+library(usmap)
+
+library(usmap)
+library(ggplot2)
+library(tidyr)
+
+
+
+
+
+
+
+names(MH) <- c('state', 'Cities', 'Data_Value', 'Upper_confidence_limit', 'Lower_confidence_limit', 'Population (city)', 'coordinates')
+
+names(weather)[names(weather) == 'Station.State'] <- 'state'
+names(weatherdata)[names(weatherdata) == 'Station.State'] <- 'state'
+names(WC.reduced)[names(WC.reduced) == 'StateAbbr'] <- 'state'
+```
+
+```{r echo=TRUE}
+
+
+plot_usmap(
+    data = weatherdata, labels = TRUE, values = "Data.Temperature.Avg.Temp", include = c("CA", "OR", "WA", "MI", "IL", "OH", "MN", "MA", "VT", "PA", "RI", "CT","TX", "GA", "LA", "FL" ), color = "red"
+  ) + 
+  scale_fill_continuous(
+    low = "White", high = "Black", name = "Avg Temp", label = scales::comma
+  ) + 
+  labs(title = "Western US States", subtitle = "These are the states in the Pacific Timezone.") +
+  theme(legend.position = "right") 
+
+```
+
+#### Here we have a mapping of all of the states that comprise our four regions, displaying the average temperature per state.
+
+```{r west coast, echo=FALSE}
+#lm <- lm(WC.reduced$Data_Value ~ WC.reduced$mean)
+
+
+plot_usmap(
+    data = WC.reduced, values = "mean", include = c("CA", "OR", "WA"), color = "red"
+  ) + 
+  scale_fill_continuous(
+    low = "Yellow", high = "Purple", name = "Avg Temp", label = scales::comma
+  ) + 
+  labs(title = "Western US States", subtitle = "These are the states in the Pacific Timezone.") +
+  theme(legend.position = "right")
+
+```
+
+```{r}
+
+plot_usmap(
+    data = WC.reduced, values = "Data_Value",  include = c("CA", "OR", "WA"), color = "red"
+  ) + 
+  scale_fill_continuous(
+    low = "yellow", high = "Purple", name = "Mental Health Score by state", label = scales::comma
+  ) + 
+  labs(title = "Western US States", subtitle = "These are the states in the Pacific Timezone.") +
+  theme(legend.position = "right")
+
+```
+
+```{r}
+ggplot(WC.reduced, aes(x = WC.reduced$mean, y = WC.reduced$Data_Value, color = WC.reduced$CityName, size = 100)) + geom_jitter() + labs(title = "Extended periods of mental health vs Average temperature", x = "Mean Temperature", y = "Mental Health score")
+
+
+
+
+```
+
+
+
+#### Here we have our westcoast regions mapped according to mental health score, with a darker purple representing a higher proportion of the population with extended periods of poor mental health. We also have our western region mapped with average temperature per state, with darker purple matching with higher temperatures. These visuals clearly display very little correlation between warmer weather and better mental health. Furthermore we have a scatter plot of the major cities in the western region with mental health on the y axis and mean temperature on the x axis, and from this we can observe no clear relationship between the two.
+
+
+
+```{r midwest, echo=FALSE}
+names(MW.reduced)[names(MW.reduced) == 'StateAbbr'] <- 'state'
+names(NE.reduced)[names(NE.reduced) == 'StateAbbr'] <- 'state'
+names(weather)[names(weather) == 'Station.State'] <- 'state'
+
+```
+
+```{r}
+
+plot_usmap(
+    data = weatherdata, values = "Data.Temperature.Avg.Temp", include = c("MI", "IL", "OH", "MN"), color = "red"
+  ) + 
+  scale_fill_continuous(
+    low = "Yellow", high = "Purple", name = "Avg Temp", label = scales::comma
+  ) + 
+  labs(title = "Midwestern US States", subtitle = "Average Temperature") +
+  theme(legend.position = "right")
+```
+
+```{r echo=FALSE}
+plot_usmap(
+    data = MW.reduced, values = "Data_Value",  include = c("MI", "IL", "OH", "MN"), color = "red"
+  ) + 
+  scale_fill_continuous(
+    low = "yellow", high = "Purple", name = "Mental Health Score by state", label = scales::comma
+  ) + 
+  labs(title = "midwestern US States",) +
+  theme(legend.position = "right")
+```
+
+```{r}
+ggplot(MW.reduced, aes(x = MW.reduced$mean, y = MW.reduced$Data_Value, color = MW.reduced$CityName, size = 100)) + geom_jitter() + labs(title = "Extended periods of mental health vs Average temperature", x = "Mean Temperature", y = "Mental Health score")
+
+
+
+```
+
+
+
+#### Here we show the same graphs as above but for the midwest, displaying a more noticable relationship between mental health and temperature, but still only a weak relationship. 
+
+```{r northeast}
+
+names(MW.reduced)[names(MW.reduced) == 'StateAbbr'] <- 'state'
+plot_usmap(
+    data = weatherdata, values = "Data.Temperature.Avg.Temp", include = c("MA", "VT", "PA", "RI", "CT"), color = "red"
+  ) + 
+  scale_fill_continuous(
+    low = "Yellow", high = "Purple", name = "Avg Temp", label = scales::comma
+  ) + 
+  labs(title = "Northeastern US States", subtitle = "Average Temperature") +
+  theme(legend.position = "right")
+
+
+```
+```{r}
+plot_usmap(
+    data = NE.reduced, values = "Data_Value",  include = c("MA", "VT", "PA", "RI", "CT"), color = "red"
+  ) + 
+  scale_fill_continuous(
+    low = "yellow", high = "Purple", name = "Mental Health Score by state", label = scales::comma
+  ) + 
+  labs(title = "Northeastern US States",) +
+  theme(legend.position = "right")
+```
+
+```{r}
+ggplot(NE.reduced, aes(x = NE.reduced$mean, y = NE.reduced$Data_Value, color = NE.reduced$CityName, size = 100)) + geom_jitter() + labs(title = "Extended periods of mental health vs Average temperature", x = "Mean Temperature", y = "Mental Health score")
+
+
+
+```
+
+
+#### For the northeast region, we again see very little relationship between between temperature and mental health.
+
+
+```{r southeast}
+
+names(SE.reduced)[names(SE.reduced) == 'StateAbbr'] <- 'state'
+
+plot_usmap(
+    data = weatherdata, values = "Data.Temperature.Avg.Temp", include = c("TX", "GA", "LA", "FL"), color = "red"
+  ) + 
+  scale_fill_continuous(
+    low = "Yellow", high = "Purple", name = "Avg Temp", label = scales::comma
+  ) + 
+  labs(title = "Southeastern US States", subtitle = "Average Temperature") +
+  theme(legend.position = "right")
+
+```
+```{r}
+plot_usmap(
+    data = SE.reduced, values = "Data_Value",  include = c("TX", "GA", "LA", "FL"), color = "red"
+  ) + 
+  scale_fill_continuous(
+    low = "yellow", high = "Purple", name = "Mental Health Score by state", label = scales::comma
+  ) + 
+  labs(title = "Southeastern US States",) +
+  theme(legend.position = "right")
+```
+
+```{r}
+ggplot(SE.reduced, aes(x = SE.reduced$mean, y = SE.reduced$Data_Value, color = SE.reduced$CityName, size = 100)) + geom_jitter() + labs(title = "Extended periods of mental health vs Average temperature", x = "Mean Temperature", y = "Mental Health score")
+
+
+
+```
+#### In the southeast we see some relationship beetween mental health and temperature, a weak one still, but it shows worse mental health with warmer weather. 
+
+
+#### While these mappings do a strong job illustrating the weak relationship between mental health and outside temperatures, a second form of visualisation is needed to truly solidify any intuition. 
+
+```{r heatmap temparature and mental health score all regions}
+
+ggplot(WC.reduced, aes(x = WC.reduced$mean, y = WC.reduced$Data_Value)) + geom_density2d_filled() + labs(title = "Temperature and Mental health", x = "Mean temperature west coast", y = "Mental health")
+
+
+ggplot(NE.reduced, aes(x = NE.reduced$mean, y = NE.reduced$Data_Value)) + geom_density2d_filled() + labs(title = "Temperature and Mental health", x = "Mean temperature Northeast", y = "Mental health")
+
+
+ggplot(SE.reduced, aes(x = SE.reduced$mean, y = SE.reduced$Data_Value)) + geom_density2d_filled() + labs(title = "Temperature and Mental health", x = "Mean temperature Southeast", y = "Mental health")
+
+
+ggplot(MW.reduced, aes(x = MW.reduced$mean, y = MW.reduced$Data_Value)) + geom_density2d_filled() + labs(title = "Temperature and Mental health", x = "Mean temperature Midwest", y = "Mental health")
+```
+
+
+#### Here we have four heatmaps with mean temperature on the x axis and mental health score on the y axis. In each case, to our great surprise, we see better mental health scores clusterred with cooler weather. This goes against our primary hypothesis, that warmer weather will be associated with better mental health. 
+
+
+
+```{r}
+
+library(dplyr)
+library(ggplot2)
+library(factoextra)
+
+ggplot(WC.reduced,aes(x = WC.reduced$mean, y = WC.reduced$Data_Value)) +
+  stat_summary(fun.data=mean_cl_normal) + 
+  geom_smooth() +  labs(title = "Mental health and Outside temperature (west coast)", x = "Average temperature", y = "Mental health score")
+
+
+ggplot(NE.reduced,aes(x = NE.reduced$mean, y = NE.reduced$Data_Value)) +
+  stat_summary(fun.data=mean_cl_normal) + 
+  geom_smooth() +  labs(title = "Mental health and Outside temperature (north east)", x = "Average temperature", y = "Mental health score")
+
+
+ggplot(MW.reduced,aes(x = MW.reduced$mean, y = MW.reduced$Data_Value)) +
+  stat_summary(fun.data=mean_cl_normal) + 
+  geom_smooth() +  labs(title = "Mental health and Outside temperature (mid west)", x = "Average temperature", y = "Mental health score")
+
+
+ggplot(SE.reduced,aes(x = SE.reduced$mean, y = SE.reduced$Data_Value)) +
+  stat_summary(fun.data=mean_cl_normal) + 
+  geom_smooth() +  labs(title = "Mental health and Outside temperature (south east)", x = "Average temperature", y = "Mental health score")
+
+
+```
+#### These simple line graphs serve to solidify our findings that mental health and temperature are only weakly correlated at best. To get a more firm understanding we will run linear regressions of mental health scores on average temperature for our various regions. 
+
+
+
+```{r vis income and mental health}
+
+ggplot(wcmulti,aes(x = wcmulti$Median.household.income, y = wcmulti$Data_Value)) +
+  stat_summary(fun.data=mean_cl_normal) + 
+  geom_smooth() +  labs(title = "Mental health and Income (westcoast)", x = "Average houshold income", y = "Mental health score")
+
+
+ggplot(NEmulti,aes(x = NEmulti$Median.Househould.Income, y = NEmulti$Data_Value)) +
+  stat_summary(fun.data=mean_cl_normal) + 
+  geom_smooth() +  labs(title = "Mental health and Income (Northeast)", x = "Average houshold income", y = "Mental health score")
+
+
+ggplot(SEmulti,aes(x = SEmulti$Median.Household.Income, y = SEmulti$Data_Value)) +
+  stat_summary(fun.data=mean_cl_normal) + 
+  geom_smooth() +  labs(title = "Mental health and Income (Southeast)", x = "Average houshold income", y = "Mental health score")
+
+ggplot(MWmulti,aes(x = MWmulti$Median.Househould.Income, y = MWmulti$Data_Value)) +
+  stat_summary(fun.data=mean_cl_normal) + 
+  geom_smooth() +  labs(title = "Mental health and Income (Northeast)", x = "Average houshold income", y = "Mental health score")
+
+
+
+
+```
+
+
+
+#### While cleaning our data, we found that many areas with warmer weather and lower income had very poor mental health, so we decided to graph the relationship between average household income in our four regions and mental health scores. We observed a much stronger relationship between income and mental health than weather and mental health. As income goes up, mental health tends to get better. To confirm this we will be running simple regressions using average temperature, and then run multiple regressions using both average temperature and averahe household income. This section is next 
+
+
+Modeling/Analysis:
+
+```{r regression simple WC}
+modelwestcoast <- lm(WC.reduced$Data_Value ~ WC.reduced$mean)
+
+
+
+summary(modelwestcoast)
+
+```
+```{r model lm north east}
+
+modelnortheast  <- lm(NE.reduced$Data_Value ~ NE.reduced$mean)
+
+
+
+summary(modelnortheast)
+
+
+
+
+```
+
+
+```{r model midwest}
+
+modelMW <- lm(MW.reduced$Data_Value ~ MW.reduced$mean)
+
+
+
+summary(modelMW)
+
+
+
+
+```
+
+
+```{r model southeast}
+modelSE <- lm(SE.reduced$Data_Value ~ SE.reduced$mean)
+
+
+
+summary(modelSE)
+
+
+
+
+```
+Results of simple regression:
+
+
+#### By running simple linear regression of mental health scores on average temperatures we find R squared coefficients lower than 30, which reveals that these two variables are not very correlated. 
+
+
+#### In some of our graphs, we noticed warmer temperatures often overlapped with places that had lower income, so we decided to run multiple regressions of mental health scores on average temperature as well as median household income of the states in each region. Our findings are below.
+
+
+```{r multiple regression including income west coast}
+
+modelcomplexWC <- lm(wcmulti$Data_Value~ wcmulti$Mean.temperature + wcmulti$Median.household.income)
+
+summary(modelcomplexWC)
+
+
+
+```
+
+```{r complex NE}
+
+modelcomplexNE <- lm(NEmulti$Data_Value ~ NEmulti$Median.Househould.Income + NEmulti$Mean.Temperature)
+
+summary(modelcomplexNE)
+```
+
+```{r MW complex}
+
+
+modelcomplexMW <- lm(MWmulti$Data_Value ~ MWmulti$Mean.Temperature + MWmulti$Median.Househould.Income)
+
+
+summary(modelcomplexMW)
+```
+
+```{r SE complex model}
+
+
+modelcomplexSE <- lm(SEmulti$Data_Value ~ SEmulti$Mean.Temperature + SEmulti$Median.Household.Income)
+
+
+summary(modelcomplexSE)
+
+
+```
+
+
+
+#### When running our multiple regression on temperature and income we find R squared values between .70 and 96, leading us to beleive that income is a much better estimator of mental health than weather. Furthermore, we discovered that warmer environments are more likely to have poor mental health, as these places are often poorer. Exploring our southeastern region, we see an R squared value of .958, meaning that most of the variation in mental health can be explained by income and weather. In the southeast we also see the highest temperatures as well as the lowest income. 
+
+
+
+# Conclusion: 
+### After thoroughly exploring weather and mental health data, we have come to the conclusion that our visualizations and our regression analyses has disproven that there is a strong correlation with low average temperature and extended periods of bad mental health. But our hypothesis that income is a better estimate of mental health was proven, namely by our multiple linear regression models. Through a targeted and limited of large metropolitan areas and a specific attention to temperature, we feel as if we have composed an experiment worth continuing. Expanding to other large cities, incorporating all 50 states and including other measures of the human environment such as precipitation, the range in temperature, UV index...etc. Applying a wider range of statistical methods and data science tools will allow us to gain a more robust understanding of the correlation between Mental Health and one's environment. Given our limited repertoire of analytical tools, we have put together a report that encapsulates some of the most fundamental questions whether mental health and temperature are related and would love to continue our research with more understanding and heightened analytic ability.
+
